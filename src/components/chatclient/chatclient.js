@@ -141,11 +141,17 @@ class ChatClient extends Component{
 	}
 	listMessages(){
 		console.log('messages: ',this.state.messages);
-		return this.state.messages.map( (messageData, index) => 
-			<div key={index} className="messageRow">
+		const outputArray = [];
+		for( var messageI = this.state.messages.length-1; messageI>=0; messageI--){
+			let messageData = this.state.messages[messageI];
+			outputArray.push(
+			<div key={messageI} className="messageRow">
 				<span className="sender">{messageData.sender}</span>
 				<span className="message">{messageData.content}</span>
 			</div>);
+		}
+		return outputArray;
+
 	}
 	/*views*/
 	login(){
