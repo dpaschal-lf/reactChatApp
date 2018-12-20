@@ -1,0 +1,55 @@
+/*<div className="chatWindow">
+			<div className="communication">
+				<div classNAme="messages">
+				</div>
+				<div className="sendBar">
+				</div>
+			</div>
+			<div className="people">
+				{this.listParticipants()}
+			</div>
+		</div>*/
+
+.chatWindow{
+	height: 100%;
+	width: 100%;
+	display: flex;
+}
+.communication{
+	width: 80%;
+	height: 100%;
+	background-color: lightblue;
+}
+.people{
+	width: 20%;
+	height: 100%;
+	background-color: pink;
+}
+.messages{
+	height: 90%;
+	width: 100%;
+}
+.messageRow{
+	width: 100%;
+	display: flex-block;
+}
+.messageRow > span{
+	display: inline-block;
+}
+.messageRow:nth-child(even){
+	background-color: lightgrey;
+}
+.sendBar{
+	height: 10%;
+	background-color: lightyellow;
+	width: 100%;
+}
+.messageRow >  .sender{
+	width: 20%;
+	box-sizing: border-box;
+	border-right: 1px solid black;
+}
+.messageRow  > .message{
+	width: 80%;
+	text-align: right;
+}
