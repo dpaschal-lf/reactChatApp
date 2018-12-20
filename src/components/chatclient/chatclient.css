@@ -53,3 +53,12 @@
 	width: 80%;
 	text-align: right;
 }
+.sendInput, .sendButton{
+	box-sizing: border-box;
+}
+.sendInput{
+	width: 90%;
+}
+.sendButton{
+	width: 10%;
+}

@@ -84,7 +84,7 @@ function getRoomOccupants( connectionOrRoomID ){
 	if(typeof connectionOrRoomID === 'string'){
 		currentRoom = rooms[connectionOrRoomID];
 	} else {
-		currentConData = chatConnections.get(connection);
+		currentConData = chatConnections.get(connectionOrRoomID);
 		currentRoom = currentConData.room;		
 	}
 	return currentRoom.listeners;

@@ -130,7 +130,6 @@ class ChatClient extends Component{
 				})
 				break;
 			case 'participantLeave':
-			debugger;
 				this.setState({
 					participants: data.content.participantList
 				})
