@@ -4,7 +4,7 @@ import './chatclient.css';
 class SocketClient{
 	constructor(config={}){
 		const defaultOptions = {
-			address: 'ws://localhost:3333',
+			address: 'ws://'+window.location.hostname+':3333',
 			open: ()=>{ console.log('connection opened')},
 			message: ()=> { console.log('message received')},
 			close: ()=>{ console.log('connection closed')}
