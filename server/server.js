@@ -31,11 +31,18 @@ function joinRoom(connection, roomID){
 		rooms[roomID].listeners.push(connection);
 		const currentChatCon = chatConnections.get(connection);
 		currentChatCon.room = rooms[roomID];
-		sendMessageToRoom(currentChatCon.name + ' has joined the room', connection);	
+		sendMessageToRoom(currentChatCon.name + ' has joined the room', connection);
+		const participantList = currentChatCon.room.listeners.map( conn => chatConnections.get(conn).name)
+		sendActionToRoom('participantJoin', {
+			participantList: participantList, 
+			name: currentChatCon.name, 
+			joined: Date.now}, 
+			roomID);	
+	
 		sendActionToPerson('roomjoin', connection, { 
 			message: `you have joined the ${currentChatCon.room.name}`,
 			roomName: currentChatCon.room.name,
-			participants: currentChatCon.room.listeners.map( conn => chatConnections.get(conn).name),
+			participants: participantList,
 			messages: currentChatCon.room.messages,
 		});
 	}
@@ -48,8 +55,14 @@ function leaveRoom(connection, room, leavingServer=false){
 		room.listeners.splice(listenerIndex, 1);
 		const currentChatCon = chatConnections.get(connection);
 		const leftRoomName = currentChatCon.room.name
-		
-		sendMessageToRoom(leftRoomName + ' has left the ' + leavingServer ? 'server' : 'room', connection, false);	
+		const participantList = currentChatCon.room.listeners.map( conn => chatConnections.get(conn).name)
+		//sendActionToRoom(action, data, roomID, sender=systemTitle)
+		sendMessageToRoom(currentChatCon.name + ' has left the ' + (leavingServer ? 'server' : 'room'), connection, undefined,false);
+		sendActionToRoom('participantLeave', {
+			name: currentChatCon.name, 
+			reason: 'left',
+			participantList: participantList
+		}, leftRoomName);	
 		if(!leavingServer){
 			sendActionToPerson('roomleave', connection, { 
 				message: `you have left the ${leftRoomName}`,
@@ -60,11 +73,32 @@ function leaveRoom(connection, room, leavingServer=false){
 
 	}	
 }
+function sendMessage(connection, data){
+	console.log(data);
+	const roomOccupants = getRoomOccupants(connection); 
+	sendMessageToRoom(data.message.content, connection, data.message.sender, false);	
+
+}
+function getRoomOccupants( connectionOrRoomID ){
+	let currentRoom, currentConData;
+	if(typeof connectionOrRoomID === 'string'){
+		currentRoom = rooms[connectionOrRoomID];
+	} else {
+		currentConData = chatConnections.get(connection);
+		currentRoom = currentConData.room;		
+	}
+	return currentRoom.listeners;
+}
 function removeConnections(connection){
 	const receiverCon = chatConnections.get(connection);
-	const roomID = receiverCon.room;
-	console.log('removing user from server');
-	leaveRoom(connection, roomID, true);
+	if(!receiverCon){ //they may not have joined anything yet
+		return
+	}
+	if(receiverCon.room){  //they may not have joined a room yet
+		const roomID = receiverCon.room;
+		console.log('removing user from server');
+		leaveRoom(connection, roomID, true);
+	}
 	chatConnections.delete(connection);
 	console.log('current connections: '+chatConnections.size);
 }
@@ -90,7 +124,11 @@ function sendMessageToPerson(message, destinationConnection, sourceConnection=nu
 	}
 	receiverCon.send(createPacket('message', senderName, message));
 }
-function sendMessageToRoom(message, connection, excludeSender=true){
+function sendActionToRoom(action, data, roomID, sender=systemTitle){
+	const occupants = getRoomOccupants(roomID);
+	occupants.forEach( listener => listener.send(createPacket(action,sender, data)))
+}
+function sendMessageToRoom(message, connection, sender=systemTitle, excludeSender=true){
 	console.log('sending message to entire room : ' + message);
 	const currentChatCon = chatConnections.get(connection);
 	let currentRoom = currentChatCon.room;
@@ -98,15 +136,17 @@ function sendMessageToRoom(message, connection, excludeSender=true){
 	if(excludeSender){
 		participants.splice( participants.indexOf(connection),1);
 	}
-	participants.forEach( listener => listener.send(createPacket('message',systemTitle, message)))
+	//there will be a problem that we will only send messages to some people some time, but then it will be in the history so everyone will see it upon connection
+	currentRoom.messages.push({sender, content: message});
+	participants.forEach( listener => listener.send(createPacket('message',sender, message)))
 }
 function createPacket(type, sender, data){
-	return JSON.stringify({ action: type, sender, data});
+	return JSON.stringify({ action: type, sender, content: data});
 }
 const rooms = {
 	lobby: { name: 'lobby', listeners: [], messages: [
-		{sender: 'SERVER', message:'play nice!'},
-		{sender: 'SERVER', message:'this means you!'}
+		{sender: 'SERVER', content:'play nice!'},
+		{sender: 'SERVER', content:'this means you!'}
 	]}
 }
 const chatConnections = new Map();
@@ -140,8 +180,9 @@ wsServer.on('request', function(request) {
 	    	case 'joinroom':
 	    		console.log('join room');
 	    		break;
-	    	case 'sendmessage':
+	    	case 'message':
 	    		console.log('send message');
+	    		sendMessage(connection, data);
 	    		break;
 	    }
     });

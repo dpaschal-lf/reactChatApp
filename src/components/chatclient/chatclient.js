@@ -60,7 +60,10 @@ class ChatClient extends Component{
 		const randomNames = ['Dan','Scott','Andy','George','Cody','Collette','Tim','Bill','Monique']
 		this.state = {
 			username: randomNames[ (randomNames.length*Math.random()>>0) ],
-			mode: 'login'
+			mode: 'login',
+			participants: [],
+			messages: [],
+			messageToSend: '',
 		}
 		this.ws = new SocketClient({
 			open: this.handleOpen,
@@ -68,27 +71,37 @@ class ChatClient extends Component{
 		});
 		
 	}
+	/*controller helpers*/
 	handleOpen(event){
 		console.log('chat client connecting');
 	}
 	handleInputUpdate( event ){
-		const allowedAttributes = ['username'];
+		const allowedAttributes = ['username','messageToSend'];
 		const name = event.target.getAttribute('name');
 		if(allowedAttributes.indexOf(name) === -1 ){
 			console.log('illegal update of state');
 			return;
 		}
 		const value = event.target.value;
+		console.log(`updating ${name} with ${value}`)
 		this.setState({
 			[name]: value
 		})
 	}
-	handleMessageSend(){
-		this.ws.sendMessage('message')
+	handleMessageSend(event){
+		const data = {
+			content: this.state.messageToSend,
+			sender: this.state.username,
+		}
+		this.setState({
+			messageToSend: ''
+		})
+		this.ws.sendMessage('message', data);
 	}
 	handleLogin(){
 		this.ws.join(this.state.username);
 	}
+	/*route controller*/
 	handleMessage( data ){
 		switch( data.action ){
 			case 'join':
@@ -99,23 +112,43 @@ class ChatClient extends Component{
 			case 'roomjoin':
 				this.setState({
 					mode: 'chat',
-					room: data.data.roomName,
-					participants: data.data.participants,
-					messages: data.data.messages
+					room: data.content.roomName,
+					participants: data.content.participants,
+					messages: data.content.messages
 				})
 				break;
+			case 'message':
+				if(this.state.mode!=='chat'){
+					return;
+				}
+				this.setState({
+					messages: [...this.state.messages, {sender: data.sender, content: data.content}]
+				})
+			case 'participantJoin':
+				this.setState({
+					participants: [...this.state.participants, data.content.name]
+				})
+				break;
+			case 'participantLeave':
+			debugger;
+				this.setState({
+					participants: data.content.participantList
+				})
 		}
 	}
+	/*view helpers*/
 	listParticipants(){
 		return this.state.participants.map( (name, index) => <div key={index}>{name}</div>);
 	}
 	listMessages(){
+		console.log('messages: ',this.state.messages);
 		return this.state.messages.map( (messageData, index) => 
 			<div key={index} className="messageRow">
 				<span className="sender">{messageData.sender}</span>
-				<span className="message">{messageData.message}</span>
+				<span className="message">{messageData.content}</span>
 			</div>);
 	}
+	/*views*/
 	login(){
 		return (<div>
 			<input type="text" value={this.state.username} name="username" onChange={this.handleInputUpdate} placeholder="username" />
@@ -132,7 +165,7 @@ class ChatClient extends Component{
 					{this.listMessages()}
 				</div>
 				<div className="sendBar">
-					<input type="text" className="sendInput" name="messageToSend" onChange={this.handleInputUpdate} placeholder="enter your message here" />
+					<input type="text" className="sendInput" name="messageToSend" onChange={this.handleInputUpdate} placeholder="enter your message here" value={this.state.messageToSend}/>
 					<button className="sendButton" onClick={this.handleMessageSend}>SEND</button>
 				</div>
 			</div>
@@ -146,6 +179,7 @@ class ChatClient extends Component{
 	render(){
 		return this[this.state.mode]();
 	}
+	/*end views*/
 }
 
 export default ChatClient;
