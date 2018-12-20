@@ -1,3 +1,19 @@
+### react chat app
+#### to test:
+- go to server folder
+	- npm install
+	- node server.js
+- go to main folder (in another terminal)
+	- npm start
+- if you want to chat between computers, you'll need the server's IP address
+	- mac: 
+		- http://osxdaily.com/2010/11/21/find-ip-address-mac/
+	- windows:
+		- https://www.digitalcitizen.life/find-ip-address-windows
+- go to <address>:3000 and that will pull up the client
+
+
+
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
