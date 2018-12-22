@@ -114,6 +114,9 @@ class ChatClient extends Component{
 	}
 	handleAddRoom(){
 		this.ws.action( 'createroom', { roomID: this.state.newRoomName})
+		this.setState({
+			newRoomName: ''
+		})
 	}
 	/*route controller*/
 	handleMessage( data ){
@@ -205,7 +208,7 @@ class ChatClient extends Component{
 				<div className="rooms">
 					{this.listRooms()}
 					<div className="roomAddSection">
-						<input type="text" name="newRoomName" onChange={this.handleInputUpdate} placeholder="new room name"/>
+						<input type="text" name="newRoomName" value={this.state.newRoomName} onChange={this.handleInputUpdate} placeholder="new room name"/>
 						<button className="newRoomAddButton" onClick={this.handleAddRoom}>CREATE</button>
 
 					</div>
