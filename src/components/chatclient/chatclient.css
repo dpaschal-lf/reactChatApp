@@ -89,3 +89,7 @@
 .roomRow > .roomCount{
 	width: 10%;
 }
+.roomRow.currentRoom{
+	background-color: lightgreen;
+	color: black;
+}

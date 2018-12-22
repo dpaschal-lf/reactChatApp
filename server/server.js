@@ -51,6 +51,21 @@ function joinRoom(connection, room){
 		console.log('could not find room ' + roomID)
 	}
 }
+function createRoom( connection, roomName, isPublic, autoJoinRoom=true){
+	const safeID = roomName.replace(/[^A-Za-z0-9]/g,'');
+	const roomCreator = getUserDataForConnection( connection );
+	console.log('room creation: ');
+	rooms[safeID] = {
+		id: safeID,
+		name: roomName, listeners: [], public: isPublic, owner: roomCreator.name, 
+		messages: [
+			{sender: 'SERVER', content:`Welcome to the ${roomName} room, created by ${roomCreator.name}`},
+		] 
+	}
+	if(autoJoinRoom){
+		joinRoom(connection, rooms[safeID]);
+	}
+}
 function leaveRoom(connection, room, leavingServer=false){
 	console.log('removing user from room');
 	console.log('room id ', room.name);
@@ -105,6 +120,13 @@ function removeConnections(connection){
 	}
 	chatConnections.delete(connection);
 	console.log('current connections: '+chatConnections.size);
+}
+function getUserDataForConnection( connection ){
+	const user = chatConnections.get(connection);
+	if(!user){
+		return false;
+	}
+	return user;
 }
 function getAvailableRooms(showOnlyPublic = true){
 	//name: 'lobby', listeners: [], public: true, owner: systemTitle
@@ -213,6 +235,9 @@ wsServer.on('request', function(request) {
 	    		break;
 	    	case 'createroom':
 	    		console.log('create room');
+	    		//all rooms will be public for now
+	    		//all new rooms will be joined automatically for now
+	    		createRoom( connection, data.message.roomID, true, true)
 	    		break;
 	    	case 'joinroom':
 	    	//leaveRoom(connection, room, leavingServer=false){

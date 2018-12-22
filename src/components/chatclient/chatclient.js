@@ -61,6 +61,7 @@ class ChatClient extends Component{
 		this.handleMessage = this.handleMessage.bind(this);
 		this.handleMessageSend = this.handleMessageSend.bind(this);
 		this.changeRoom = this.changeRoom.bind(this); 
+		this.handleAddRoom = this.handleAddRoom.bind(this);
 		const randomNames = ['Dan','Scott','Andy','George','Cody','Collette','Tim','Bill','Monique']
 		this.state = {
 			username: randomNames[ (randomNames.length*Math.random()>>0) ],
@@ -68,7 +69,9 @@ class ChatClient extends Component{
 			participants: [],
 			messages: [],
 			messageToSend: '',
-			availableRooms: []
+			availableRooms: [],
+			room: '',
+			newRoomName: ''
 		}
 		this.ws = new SocketClient({
 			open: this.handleOpen,
@@ -81,7 +84,7 @@ class ChatClient extends Component{
 		console.log('chat client connecting');
 	}
 	handleInputUpdate( event ){
-		const allowedAttributes = ['username','messageToSend'];
+		const allowedAttributes = ['username','messageToSend','newRoomName'];
 		const name = event.target.getAttribute('name');
 		if(allowedAttributes.indexOf(name) === -1 ){
 			console.log('illegal update of state');
@@ -108,6 +111,9 @@ class ChatClient extends Component{
 	}
 	changeRoom( newRoom ){
 		this.ws.action( 'joinroom', {roomID: newRoom})
+	}
+	handleAddRoom(){
+		this.ws.action( 'createroom', { roomID: this.state.newRoomName})
 	}
 	/*route controller*/
 	handleMessage( data ){
@@ -165,7 +171,7 @@ class ChatClient extends Component{
 	//{name, owner, occupantCount: roomData.listeners.length}
 	listRooms(){
 		return this.state.availableRooms.map( (room, index)=>
-		<div className="roomRow" key={index} onClick={(e)=>this.changeRoom(room.ID) }>
+		<div className={'roomRow' + (room.name === this.state.room ? ' currentRoom' : '')}  key={index} onClick={(e)=>this.changeRoom(room.ID) }>
 			<div className="roomName">{room.name}</div>
 			<div className="roomOwner">{room.owner}</div>
 			<div className="roomCount">{room.occupantCount}</div>
@@ -198,6 +204,11 @@ class ChatClient extends Component{
 				</div>
 				<div className="rooms">
 					{this.listRooms()}
+					<div className="roomAddSection">
+						<input type="text" name="newRoomName" onChange={this.handleInputUpdate} placeholder="new room name"/>
+						<button className="newRoomAddButton" onClick={this.handleAddRoom}>CREATE</button>
+
+					</div>
 				</div>
 			</div>
 		</div>)
