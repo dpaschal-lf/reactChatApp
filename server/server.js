@@ -26,25 +26,29 @@ function originIsAllowed(origin) {
   return true;
 }
 
-function joinRoom(connection, roomID){
-	if(rooms[roomID]){
-		rooms[roomID].listeners.push(connection);
+function joinRoom(connection, room){
+	if(room){
+		room.listeners.push(connection);
 		const currentChatCon = chatConnections.get(connection);
-		currentChatCon.room = rooms[roomID];
+		currentChatCon.room = room;
 		sendMessageToRoom(currentChatCon.name + ' has joined the room', connection);
 		const participantList = currentChatCon.room.listeners.map( conn => chatConnections.get(conn).name)
 		sendActionToRoom('participantJoin', {
 			participantList: participantList, 
 			name: currentChatCon.name, 
 			joined: Date.now}, 
-			roomID);	
+			currentChatCon.room
+		);	
 	
 		sendActionToPerson('roomjoin', connection, { 
 			message: `you have joined the ${currentChatCon.room.name}`,
 			roomName: currentChatCon.room.name,
 			participants: participantList,
 			messages: currentChatCon.room.messages,
+			availableRooms: getAvailableRooms()
 		});
+	} else {
+		console.log('could not find room ' + roomID)
 	}
 }
 function leaveRoom(connection, room, leavingServer=false){
@@ -62,15 +66,13 @@ function leaveRoom(connection, room, leavingServer=false){
 			name: currentChatCon.name, 
 			reason: 'left',
 			participantList: participantList
-		}, leftRoomName);	
+		}, currentChatCon.room);	
 		if(!leavingServer){
 			sendActionToPerson('roomleave', connection, { 
 				message: `you have left the ${leftRoomName}`,
 			});
 		}
 		currentChatCon.room = null;
-		
-
 	}	
 }
 function sendMessage(connection, data){
@@ -79,13 +81,15 @@ function sendMessage(connection, data){
 	sendMessageToRoom(data.message.content, connection, data.message.sender, false);	
 
 }
+function getRoomForConnection( connection ){
+	return chatConnections.get(connection).room;
+}
 function getRoomOccupants( connectionOrRoomID ){
 	let currentRoom, currentConData;
 	if(typeof connectionOrRoomID === 'string'){
 		currentRoom = rooms[connectionOrRoomID];
 	} else {
-		currentConData = chatConnections.get(connectionOrRoomID);
-		currentRoom = currentConData.room;		
+		currentRoom = connectionOrRoomID	
 	}
 	return currentRoom.listeners;
 }
@@ -101,6 +105,27 @@ function removeConnections(connection){
 	}
 	chatConnections.delete(connection);
 	console.log('current connections: '+chatConnections.size);
+}
+function getAvailableRooms(showOnlyPublic = true){
+	//name: 'lobby', listeners: [], public: true, owner: systemTitle
+	let roomList = Object.values(rooms);
+	roomList = roomList
+	.map( roomData => 
+			{
+				return {
+					ID: roomData.id,
+					name: roomData.name, 
+					owner: roomData.owner, 
+					occupantCount: roomData.listeners.length,
+					public: roomData.public
+				}
+			}
+		)
+	if(showOnlyPublic){
+		roomList = roomList.filter( room => room.public );
+	}
+
+	return roomList;
 }
 function addConnection(connection, data){
 	console.log('addding connection with data: ', data.message)
@@ -124,8 +149,8 @@ function sendMessageToPerson(message, destinationConnection, sourceConnection=nu
 	}
 	receiverCon.send(createPacket('message', senderName, message));
 }
-function sendActionToRoom(action, data, roomID, sender=systemTitle){
-	const occupants = getRoomOccupants(roomID);
+function sendActionToRoom(action, data, room, sender=systemTitle){
+	const occupants = getRoomOccupants(room);
 	occupants.forEach( listener => listener.send(createPacket(action,sender, data)))
 }
 function sendMessageToRoom(message, connection, sender=systemTitle, excludeSender=true){
@@ -143,11 +168,23 @@ function sendMessageToRoom(message, connection, sender=systemTitle, excludeSende
 function createPacket(type, sender, data){
 	return JSON.stringify({ action: type, sender, content: data});
 }
+
 const rooms = {
-	lobby: { name: 'lobby', listeners: [], messages: [
-		{sender: 'SERVER', content:'play nice!'},
-		{sender: 'SERVER', content:'this means you!'}
-	]}
+	lobby: { 
+		id: 'lobby',
+		name: 'lobby', listeners: [], public: true, owner: systemTitle, 
+		messages: [
+			{sender: 'SERVER', content:'play nice!'},
+			{sender: 'SERVER', content:'this means you!'}
+		]
+	},
+	testRoom: {
+		id: 'testRoom',
+		name: 'test room', listeners: [], public: true, owner: 'test', 
+		messages: [
+			{sender: 'SERVER', content:'test message!'},
+		] 
+	}
 }
 const chatConnections = new Map();
 
@@ -172,13 +209,20 @@ wsServer.on('request', function(request) {
 	    	case 'join':
 	    		console.log('account login');
 	    		addConnection(connection, data);
-	    		joinRoom(connection, 'lobby')
+	    		joinRoom(connection, rooms.lobby)
 	    		break;
 	    	case 'createroom':
 	    		console.log('create room');
 	    		break;
 	    	case 'joinroom':
-	    		console.log('join room');
+	    	//leaveRoom(connection, room, leavingServer=false){
+	    		if(data.message.roomID === chatConnections.get(connection).room.id){
+	    			console.log('already in that room, not switching');
+	    			return false;
+	    		}
+	    		leaveRoom(connection, getRoomForConnection( connection ));
+	    		console.log("join room data: ", data);
+	    		joinRoom(connection, rooms[data.message.roomID]);
 	    		break;
 	    	case 'message':
 	    		console.log('send message');

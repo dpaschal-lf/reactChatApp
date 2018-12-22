@@ -20,10 +20,16 @@
 	height: 100%;
 	background-color: lightblue;
 }
-.people{
+.serverData{
 	width: 20%;
 	height: 100%;
 	background-color: pink;
+}
+.people{
+	height: 50%;
+}
+.rooms{
+	height: 50%;
 }
 .messages{
 	height: 90%;
@@ -60,5 +66,26 @@
 	width: 90%;
 }
 .sendButton{
+	width: 10%;
+}
+.roomRow{
+	cursor: pointer;
+	border-bottom: 1px solid black;
+	display: flex;
+}
+.roomRow:nth-child(even){
+	background-color: lightgrey;
+}
+.roomRow:hover{
+	background-color: black;
+	color: white;
+}
+.roomRow > .roomName{
+	width: 45%;
+}
+.roomRow > .roomOwner{
+	width: 45%;
+}
+.roomRow > .roomCount{
 	width: 10%;
 }

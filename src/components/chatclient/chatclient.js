@@ -44,6 +44,9 @@ class SocketClient{
 	join(username){
 		this.sendMessage('join', {username});
 	}
+	action( action, data){
+		this.sendMessage(action, data);
+	}
 	send(name, message){
 		this.sendMessage('message', {sender: name, message })
 	}
@@ -57,6 +60,7 @@ class ChatClient extends Component{
 		this.handleLogin = this.handleLogin.bind(this);
 		this.handleMessage = this.handleMessage.bind(this);
 		this.handleMessageSend = this.handleMessageSend.bind(this);
+		this.changeRoom = this.changeRoom.bind(this); 
 		const randomNames = ['Dan','Scott','Andy','George','Cody','Collette','Tim','Bill','Monique']
 		this.state = {
 			username: randomNames[ (randomNames.length*Math.random()>>0) ],
@@ -64,6 +68,7 @@ class ChatClient extends Component{
 			participants: [],
 			messages: [],
 			messageToSend: '',
+			availableRooms: []
 		}
 		this.ws = new SocketClient({
 			open: this.handleOpen,
@@ -101,6 +106,9 @@ class ChatClient extends Component{
 	handleLogin(){
 		this.ws.join(this.state.username);
 	}
+	changeRoom( newRoom ){
+		this.ws.action( 'joinroom', {roomID: newRoom})
+	}
 	/*route controller*/
 	handleMessage( data ){
 		switch( data.action ){
@@ -114,7 +122,8 @@ class ChatClient extends Component{
 					mode: 'chat',
 					room: data.content.roomName,
 					participants: data.content.participants,
-					messages: data.content.messages
+					messages: data.content.messages,
+					availableRooms: data.content.availableRooms
 				})
 				break;
 			case 'message':
@@ -153,6 +162,15 @@ class ChatClient extends Component{
 		return outputArray;
 
 	}
+	//{name, owner, occupantCount: roomData.listeners.length}
+	listRooms(){
+		return this.state.availableRooms.map( (room, index)=>
+		<div className="roomRow" key={index} onClick={(e)=>this.changeRoom(room.ID) }>
+			<div className="roomName">{room.name}</div>
+			<div className="roomOwner">{room.owner}</div>
+			<div className="roomCount">{room.occupantCount}</div>
+		</div>)
+	}
 	/*views*/
 	login(){
 		return (<div>
@@ -174,8 +192,13 @@ class ChatClient extends Component{
 					<button className="sendButton" onClick={this.handleMessageSend}>SEND</button>
 				</div>
 			</div>
-			<div className="people">
-				{this.listParticipants()}
+			<div className="serverData">
+				<div className="people">
+					{this.listParticipants()}
+				</div>
+				<div className="rooms">
+					{this.listRooms()}
+				</div>
 			</div>
 		</div>)
 	}
