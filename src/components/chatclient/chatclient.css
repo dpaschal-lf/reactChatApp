@@ -1,15 +1,3 @@
-/*<div className="chatWindow">
-			<div className="communication">
-				<div classNAme="messages">
-				</div>
-				<div className="sendBar">
-				</div>
-			</div>
-			<div className="people">
-				{this.listParticipants()}
-			</div>
-		</div>*/
-
 .chatWindow{
 	height: 100%;
 	width: 100%;
@@ -34,6 +22,7 @@
 .messages{
 	height: 90%;
 	width: 100%;
+	overflow-y: scroll;
 }
 .messageRow{
 	width: 100%;
