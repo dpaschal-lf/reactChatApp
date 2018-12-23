@@ -1,9 +1,30 @@
 const WebSocketServer = require('websocket').server;
 const websocketPort = 3333;
+const systemTitle = "SYSTEM";
 //const mysql = require('mysql');
 //const mysql_creds = require('./mysqlcreds.js');
 //const db = mysql.createConnection( mysql_creds );
 const http = require('http');
+
+const rooms = {
+	lobby: { 
+		id: 'lobby',
+		name: 'lobby', listeners: [], public: true, owner: systemTitle, 
+		messages: [
+			{sender: 'SERVER', content:'play nice!'},
+			{sender: 'SERVER', content:'this means you!'}
+		]
+	},
+	random: {
+		id: 'random',
+		name: 'random', listeners: [], public: true, owner: systemTitle, 
+		messages: [
+			{sender: 'SERVER', content:'feel free to talk about anything here!'},
+		] 
+	}
+}
+
+const chatConnections = new Map();
  
 const server = http.createServer(function(request, response) {
     console.log((new Date()) + ' Received request for ' + request.url);
@@ -29,10 +50,10 @@ function originIsAllowed(origin) {
 function joinRoom(connection, room){
 	if(room){
 		room.listeners.push(connection);
-		const currentChatCon = chatConnections.get(connection);
+		const currentChatCon = getUserDataForConnection(connection);
 		currentChatCon.room = room;
 		sendMessageToRoom(currentChatCon.name + ' has joined the room', connection);
-		const participantList = currentChatCon.room.listeners.map( conn => chatConnections.get(conn).name)
+		const participantList = currentChatCon.room.listeners.map( conn => getUserDataForConnection(conn).name)
 		sendActionToRoom('participantJoin', {
 			participantList: participantList, 
 			name: currentChatCon.name, 
@@ -77,9 +98,9 @@ function leaveRoom(connection, room, leavingServer=false){
 	if(room){
 		const listenerIndex = room.listeners.indexOf(connection);
 		room.listeners.splice(listenerIndex, 1);
-		const currentChatCon = chatConnections.get(connection);
+		const currentChatCon = getUserDataForConnection(connection);
 		const leftRoomName = currentChatCon.room.name
-		const participantList = currentChatCon.room.listeners.map( conn => chatConnections.get(conn).name)
+		const participantList = currentChatCon.room.listeners.map( conn => getUserDataForConnection(conn).name)
 		//sendActionToRoom(action, data, roomID, sender=systemTitle)
 		sendMessageToRoom(currentChatCon.name + ' has left the ' + (leavingServer ? 'server' : 'room'), connection, undefined,false);
 		sendActionToRoom('participantLeave', {
@@ -102,7 +123,7 @@ function sendMessage(connection, data){
 
 }
 function getRoomForConnection( connection ){
-	return chatConnections.get(connection).room;
+	return getUserDataForConnection(connection).room;
 }
 function getRoomOccupants( connectionOrRoomID ){
 	let currentRoom, currentConData;
@@ -121,7 +142,7 @@ function getServerOccupants(){
 	return allUsers;
 }
 function removeConnections(connection){
-	const receiverCon = chatConnections.get(connection);
+	const receiverCon = getUserDataForConnection(connection);
 	if(!receiverCon){ //they may not have joined anything yet
 		return
 	}
@@ -141,7 +162,6 @@ function getUserDataForConnection( connection ){
 	return user;
 }
 function getAvailableRooms(showOnlyPublic = true){
-	//name: 'lobby', listeners: [], public: true, owner: systemTitle
 	let roomList = Object.values(rooms);
 	roomList = roomList
 	.map( roomData => 
@@ -173,12 +193,12 @@ function addConnection(connection, data){
 function sendActionToPerson(action, recipientConnection, extraData={}){
 	recipientConnection.send( createPacket(action, systemTitle, extraData))	
 }
-const systemTitle = "SYSTEM";
+
 function sendMessageToPerson(message, destinationConnection, sourceConnection=null){
-	const receiverCon = chatConnections.get(destinationConnection);
+	const receiverCon = getUserDataForConnection(destinationConnection);
 	let senderName = '';
 	if(sourceConnection!==null){
-		let senderCon = chatConnections.get(sourceConnection);
+		let senderCon = getUserDataForConnection(sourceConnection);
 		senderName = senderCon.name
 	}
 	receiverCon.send(createPacket('message', senderName, message));
@@ -194,7 +214,7 @@ function sendActionToRoom(action, data, room, sender=systemTitle){
 }
 function sendMessageToRoom(message, connection, sender=systemTitle, excludeSender=true){
 	console.log('sending message to entire room : ' + message);
-	const currentChatCon = chatConnections.get(connection);
+	const currentChatCon = getUserDataForConnection(connection);
 	let currentRoom = currentChatCon.room;
 	const participants = currentRoom.listeners.slice();
 	if(excludeSender){
@@ -208,33 +228,8 @@ function createPacket(type, sender, data){
 	return JSON.stringify({ action: type, sender, content: data});
 }
 
-const rooms = {
-	lobby: { 
-		id: 'lobby',
-		name: 'lobby', listeners: [], public: true, owner: systemTitle, 
-		messages: [
-			{sender: 'SERVER', content:'play nice!'},
-			{sender: 'SERVER', content:'this means you!'}
-		]
-	},
-	testRoom: {
-		id: 'testRoom',
-		name: 'test room', listeners: [], public: true, owner: 'test', 
-		messages: [
-			{sender: 'SERVER', content:'test message!'},
-		] 
-	}
-}
-const chatConnections = new Map();
-
 wsServer.on('request', function(request) {
 	console.log('test');
-    // if (!originIsAllowed(request.origin)) {
-    //   // Make sure we only accept requests from an allowed origin
-    //   request.reject();
-    //   console.log((new Date()) + ' Connection from origin ' + request.origin + ' rejected.');
-    //   return;
-    // }
     const connection = request.accept(null, request.origin);
     console.log((new Date()) + ' Connection accepted.');
     connection.on('message', function(message) {
@@ -263,7 +258,7 @@ wsServer.on('request', function(request) {
 	    		break;
 	    	case 'joinroom':
 	    	//leaveRoom(connection, room, leavingServer=false){
-	    		if(data.message.roomID === chatConnections.get(connection).room.id){
+	    		if(data.message.roomID === getUserDataForConnection(connection).room.id){
 	    			console.log('already in that room, not switching');
 	    			return false;
 	    		}
