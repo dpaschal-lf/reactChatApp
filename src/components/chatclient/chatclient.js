@@ -15,10 +15,15 @@ class SocketClient{
 			this.options[key] = config[key] || defaultOptions[key];
 		}
 		this.connected = false;
+		this.connect();
+	}
+	connect(){
+
 		this.ws = new WebSocket(this.options.address);
 		this.ws.onopen = this.handleOpen.bind(this);
 		this.ws.onmessage = this.handleMessage.bind(this);
-		this.ws.onclose = this.handleClose.bind(this);
+		this.ws.onclose = this.handleClose.bind(this);	
+
 	}
 	handleOpen(event){
 		console.log('server open processed');
@@ -63,26 +68,37 @@ class ChatClient extends Component{
 		this.handleMessageSend = this.handleMessageSend.bind(this);
 		this.changeRoom = this.changeRoom.bind(this); 
 		this.handleAddRoom = this.handleAddRoom.bind(this);
+		this.handleServerClose = this.handleServerClose.bind(this);
+		this.handleServerTimerCheck = this.handleServerTimerCheck.bind(this);
 		const randomNames = ['Dan','Scott','Andy','George','Cody','Collette','Tim','Bill','Monique']
 		this.state = {
 			username: randomNames[ (randomNames.length*Math.random()>>0) ],
-			mode: 'login',
+			mode: 'connecting',
 			participants: [],
 			messages: [],
 			messageToSend: '',
 			availableRooms: [],
 			room: '',
-			newRoomName: ''
+			newRoomName: '',
+			checkTimer: null,
+			remainingCheckTime: 3,
+			timerMessage: '',
+			connectAttempts: 2
 		}
+		this.maxCheckTime = 3;
 		this.ws = new SocketClient({
 			open: this.handleOpen,
-			message: this.handleMessage
+			message: this.handleMessage,
+			close: this.handleServerClose
 		});
 		
 	}
 	/*controller helpers*/
 	handleOpen(event){
 		console.log('chat client connecting');
+		this.setState({
+			mode: 'login'
+		})
 	}
 	handleInputUpdate( event ){
 		const allowedAttributes = ['username','messageToSend','newRoomName'];
@@ -118,6 +134,41 @@ class ChatClient extends Component{
 		this.setState({
 			newRoomName: ''
 		})
+	}
+	handleServerClose(){
+		this.setState({
+			mode: 'connectionLost',
+			checkTimer: setInterval(this.handleServerTimerCheck, 1000)
+		})
+	}
+	handleServerTimerCheck(){
+		//debugger;
+		const nextTime = this.state.remainingCheckTime-1;
+		let remainingConnects;
+		if(this.state.connectAttempts===0){
+			clearInterval(this.state.checkTimer);
+			this.setState({
+				checkTimer: null,
+				timerMessage: '',
+				mode: 'connectionFailed'
+			})
+		}
+		else if(nextTime === 0){
+			clearInterval(this.state.checkTimer);
+			this.setState({
+				connectAttempts: this.state.connectAttempts-1,
+				checkTimer : null,
+				timerMessage: '',
+				remainingCheckTime: this.maxCheckTime,
+				mode: 'reconnect'
+			});
+		} else {
+			this.setState({
+				remainingCheckTime: nextTime,
+				timerMessage: `${nextTime} seconds till next connect attempt.  (${this.state.connectAttempts} remaining}`
+			})
+		}
+
 	}
 	/*route controller*/
 	handleMessage( data ){
@@ -190,6 +241,21 @@ class ChatClient extends Component{
 			)
 	}
 	/*views*/
+	connectionFailed(){
+		return (<div>Reconnection attempt failed: <br/>
+			Did you start the server? (Go to server folder and type 'node server.js')
+			<br/>restart to try again</div>);
+	}
+	connecting(){
+		return (<div>Connecting to chat server...</div>);
+	}
+	reconnect(){
+		this.ws.connect();
+		return (<div>Attempting to reconnect...</div>)
+	}
+	connectionLost(){
+		return (<div>Lost Connection.<br/>{this.state.timerMessage}</div>)
+	}
 	login(){
 		return (<div>
 			<input type="text" value={this.state.username} name="username" onChange={this.handleInputUpdate} placeholder="username" />
