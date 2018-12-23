@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import './chatclient.css';
+import SmartInput from '../smartinput/smartinput';
 
 class SocketClient{
 	constructor(config={}){
@@ -205,7 +206,9 @@ class ChatClient extends Component{
 					{this.listMessages()}
 				</div>
 				<div className="sendBar">
-					<input type="text" className="sendInput" name="messageToSend" onChange={this.handleInputUpdate} placeholder="enter your message here" value={this.state.messageToSend}/>
+					{/*<input type="text" callOnPress={[{key: 13, callback: this.handleMessageSend}]} className="sendInput" name="messageToSend" onChange={this.handleInputUpdate} placeholder="enter your message here" value={this.state.messageToSend}/>*/}
+					<SmartInput type="text" callOnPress={[{key: 13, callback: this.handleMessageSend}]} className="sendInput" name="messageToSend" onChange={this.handleInputUpdate} placeholder="enter your message here" value={this.state.messageToSend}/>
+
 					<button className="sendButton" onClick={this.handleMessageSend}>SEND</button>
 				</div>
 			</div>
