@@ -62,9 +62,14 @@ function createRoom( connection, roomName, isPublic, autoJoinRoom=true){
 			{sender: 'SERVER', content:`Welcome to the ${roomName} room, created by ${roomCreator.name}`},
 		] 
 	}
-	if(autoJoinRoom){
-		joinRoom(connection, rooms[safeID]);
+	if(rooms.hasOwnProperty(safeID)){
+		if(autoJoinRoom){
+			joinRoom(connection, rooms[safeID]);
+		}	
+		return rooms[safeID];	
 	}
+
+	return false;
 }
 function leaveRoom(connection, room, leavingServer=false){
 	console.log('removing user from room');
@@ -107,6 +112,13 @@ function getRoomOccupants( connectionOrRoomID ){
 		currentRoom = connectionOrRoomID	
 	}
 	return currentRoom.listeners;
+}
+function getServerOccupants(){
+	const allUsers = [];
+	for(let connection of chatConnections){
+		allUsers.push(connection[0]);
+	}
+	return allUsers;
 }
 function removeConnections(connection){
 	const receiverCon = chatConnections.get(connection);
@@ -172,7 +184,12 @@ function sendMessageToPerson(message, destinationConnection, sourceConnection=nu
 	receiverCon.send(createPacket('message', senderName, message));
 }
 function sendActionToRoom(action, data, room, sender=systemTitle){
-	const occupants = getRoomOccupants(room);
+	let occupants
+	if(room===null){
+		occupants = getServerOccupants();
+	} else {
+		occupants = getRoomOccupants(room);
+	}
 	occupants.forEach( listener => listener.send(createPacket(action,sender, data)))
 }
 function sendMessageToRoom(message, connection, sender=systemTitle, excludeSender=true){
@@ -223,7 +240,8 @@ wsServer.on('request', function(request) {
     connection.on('message', function(message) {
 	    console.log('Received Message: ' + message.utf8Data);
 	    //connection.sendUTF(message.utf8Data);
-	    const data = JSON.parse(message.utf8Data)
+	    const data = JSON.parse(message.utf8Data);
+	    const currentUser = getUserDataForConnection(connection);
 	    switch(data.action){
 	    	case 'createaccount':
 	    		console.log('create account');
@@ -237,7 +255,11 @@ wsServer.on('request', function(request) {
 	    		console.log('create room');
 	    		//all rooms will be public for now
 	    		//all new rooms will be joined automatically for now
-	    		createRoom( connection, data.message.roomID, true, true)
+	    		const newRoomData = createRoom( connection, data.message.roomID, true, true);
+	    		if(newRoomData){
+	    			sendActionToRoom('roomListUpdate', { availableRooms: getAvailableRooms(true) }, null);
+	    		}
+	    		
 	    		break;
 	    	case 'joinroom':
 	    	//leaveRoom(connection, room, leavingServer=false){

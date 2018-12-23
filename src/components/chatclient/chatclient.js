@@ -151,6 +151,11 @@ class ChatClient extends Component{
 				this.setState({
 					participants: data.content.participantList
 				})
+				break;
+			case 'roomListUpdate':
+				this.setState({
+					availableRooms: data.content.availableRooms
+				})
 		}
 	}
 	/*view helpers*/
@@ -172,13 +177,16 @@ class ChatClient extends Component{
 
 	}
 	//{name, owner, occupantCount: roomData.listeners.length}
-	listRooms(){
-		return this.state.availableRooms.map( (room, index)=>
-		<div className={'roomRow' + (room.name === this.state.room ? ' currentRoom' : '')}  key={index} onClick={(e)=>this.changeRoom(room.ID) }>
-			<div className="roomName">{room.name}</div>
-			<div className="roomOwner">{room.owner}</div>
-			<div className="roomCount">{room.occupantCount}</div>
-		</div>)
+	listRooms(sortField='name', order=-1){
+		return this.state.availableRooms
+			.sort( (a,b)=> (a[sortField]<b[sortField] ? order : order*-1))
+			.map( (room, index)=>
+				<div className={'roomRow' + (room.name === this.state.room ? ' currentRoom' : '')}  key={index} onClick={(e)=>this.changeRoom(room.ID) }>
+					<div className="roomName">{room.name}</div>
+					<div className="roomOwner">{room.owner}</div>
+					<div className="roomCount">{room.occupantCount}</div>
+				</div>
+			)
 	}
 	/*views*/
 	login(){
