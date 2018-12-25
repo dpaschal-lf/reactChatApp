@@ -1,9 +1,7 @@
 const WebSocketServer = require('websocket').server;
 const websocketPort = 3333;
 const systemTitle = "SYSTEM";
-//const mysql = require('mysql');
-//const mysql_creds = require('./mysqlcreds.js');
-//const db = mysql.createConnection( mysql_creds );
+
 const http = require('http');
 
 const rooms = {
@@ -118,7 +116,6 @@ function leaveRoom(connection, room, leavingServer=false){
 }
 function sendMessage(connection, data){
 	console.log(data);
-	const roomOccupants = getRoomOccupants(connection); 
 	sendMessageToRoom(data.message.content, connection, data.message.sender, false);	
 
 }
